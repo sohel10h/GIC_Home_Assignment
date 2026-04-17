@@ -1,8 +1,7 @@
 # Order Processing System
 
-I used In-Memory Event Bus and EF Core InMemory DB with Outbox design pattern and Clean architecture.
-
-
+I went with an In-Memory Event Bus and EF Core InMemory DB, following the Outbox pattern and Clean Architecture principles. Since the In-Memory Event Bus doesn't work across multiple applications or servers, I consolidated the three microservices into a single application to simulate the event-driven architecture flow.
+In the Outbox pattern, the publisher writes to an Outbox table, while the consumer tracks processed messages in an IncomingRequest table. The two can be matched using an Operation ID, though the exact matching strategy may vary depending on business requirements.
 
 
 # Run Locally
