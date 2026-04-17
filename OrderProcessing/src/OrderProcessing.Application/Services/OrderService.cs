@@ -4,17 +4,24 @@ using OrderProcessing.Application.Interfaces;
 using OrderProcessing.Application.Interfaces.Repositories;
 using OrderProcessing.Domain.Entities;
 using OrderProcessing.Domain.Enums;
+using OrderProcessing.Domain.Events;
+using OrderProcessing.Domain.Interfaces;
 
 namespace OrderProcessing.Application.Services;
 
 public class OrderService : IOrderService
 {
     private readonly IRepository<Order> _ordersRepo;
+    private readonly IInMemoryEventBus _eventBus;
     private readonly ILogger<OrderService> _logger;
 
-    public OrderService(IRepository<Order> ordersRepo, ILogger<OrderService> logger)
+    public OrderService(
+        IRepository<Order> ordersRepo,
+        IInMemoryEventBus eventBus,
+        ILogger<OrderService> logger)
     {
         _ordersRepo = ordersRepo;
+        _eventBus = eventBus;
         _logger = logger;
     }
 
@@ -33,6 +40,15 @@ public class OrderService : IOrderService
 
         _ordersRepo.Add(order);
         await _ordersRepo.SaveChangesAsync();
+
+        await _eventBus.PublishAsync("order.created", new OrderCreatedEvent
+        {
+            OperationId = operationId,
+            OrderId = order.Id,
+            CustomerName = order.CustomerName,
+            CustomerEmail = order.CustomerEmail,
+            Amount = order.Amount
+        });
 
         _logger.LogInformation(
             "Order {OrderId} created for customer {CustomerName}. OperationId: {OperationId}",
