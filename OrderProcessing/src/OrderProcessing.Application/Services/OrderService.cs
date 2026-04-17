@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using OrderProcessing.Application.DTOs;
 using OrderProcessing.Application.Interfaces;
@@ -5,23 +6,22 @@ using OrderProcessing.Application.Interfaces.Repositories;
 using OrderProcessing.Domain.Entities;
 using OrderProcessing.Domain.Enums;
 using OrderProcessing.Domain.Events;
-using OrderProcessing.Domain.Interfaces;
 
 namespace OrderProcessing.Application.Services;
 
 public class OrderService : IOrderService
 {
     private readonly IRepository<Order> _ordersRepo;
-    private readonly IInMemoryEventBus _eventBus;
+    private readonly IRepository<OutboxMessage> _outboxRepo;
     private readonly ILogger<OrderService> _logger;
 
     public OrderService(
         IRepository<Order> ordersRepo,
-        IInMemoryEventBus eventBus,
+        IRepository<OutboxMessage> outboxRepo,
         ILogger<OrderService> logger)
     {
         _ordersRepo = ordersRepo;
-        _eventBus = eventBus;
+        _outboxRepo = outboxRepo;
         _logger = logger;
     }
 
@@ -39,16 +39,26 @@ public class OrderService : IOrderService
         };
 
         _ordersRepo.Add(order);
-        await _ordersRepo.SaveChangesAsync();
-
-        await _eventBus.PublishAsync("order.created", new OrderCreatedEvent
+        _outboxRepo.Add(new OutboxMessage
         {
+            Id = Guid.NewGuid(),
+            TopicName = "order.created",
             OperationId = operationId,
-            OrderId = order.Id,
-            CustomerName = order.CustomerName,
-            CustomerEmail = order.CustomerEmail,
-            Amount = order.Amount
+            Status = ProcessingStatus.Pending,
+            BodyJson = JsonSerializer.Serialize(new OrderCreatedEvent
+            {
+                OperationId = operationId,
+                OrderId = order.Id,
+                CustomerName = order.CustomerName,
+                CustomerEmail = order.CustomerEmail,
+                Amount = order.Amount
+            }),
+            RetryCount = 0,
+            CreatedOnUtc = DateTime.UtcNow,
+            UpdatedOnUtc = DateTime.UtcNow
         });
+
+        await _ordersRepo.SaveChangesAsync();
 
         _logger.LogInformation(
             "Order {OrderId} created for customer {CustomerName}. OperationId: {OperationId}",

@@ -1,26 +1,26 @@
+using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using OrderProcessing.Application.Interfaces;
 using OrderProcessing.Application.Interfaces.Repositories;
 using OrderProcessing.Domain.Entities;
 using OrderProcessing.Domain.Enums;
 using OrderProcessing.Domain.Events;
-using OrderProcessing.Domain.Interfaces;
 
 namespace OrderProcessing.Application.Services;
 
 public class PaymentService : IPaymentService
 {
     private readonly IRepository<Payment> _paymentsRepo;
-    private readonly IInMemoryEventBus _eventBus;
+    private readonly IRepository<OutboxMessage> _outboxRepo;
     private readonly ILogger<PaymentService> _logger;
 
     public PaymentService(
         IRepository<Payment> paymentsRepo,
-        IInMemoryEventBus eventBus,
+        IRepository<OutboxMessage> outboxRepo,
         ILogger<PaymentService> logger)
     {
         _paymentsRepo = paymentsRepo;
-        _eventBus = eventBus;
+        _outboxRepo = outboxRepo;
         _logger = logger;
     }
 
@@ -37,15 +37,25 @@ public class PaymentService : IPaymentService
         };
 
         _paymentsRepo.Add(payment);
-        await _paymentsRepo.SaveChangesAsync();
-
-        await _eventBus.PublishAsync("payment.succeeded", new PaymentSucceededEvent
+        _outboxRepo.Add(new OutboxMessage
         {
+            Id = Guid.NewGuid(),
+            TopicName = "payment.succeeded",
             OperationId = operationId,
-            OrderId = orderId,
-            PaymentId = payment.Id,
-            Amount = amount
+            Status = ProcessingStatus.Pending,
+            BodyJson = JsonSerializer.Serialize(new PaymentSucceededEvent
+            {
+                OperationId = operationId,
+                OrderId = orderId,
+                PaymentId = payment.Id,
+                Amount = amount
+            }),
+            RetryCount = 0,
+            CreatedOnUtc = DateTime.UtcNow,
+            UpdatedOnUtc = DateTime.UtcNow
         });
+
+        await _paymentsRepo.SaveChangesAsync();
 
         _logger.LogInformation(
             "Payment {PaymentId} processed for order {OrderId}. OperationId: {OperationId}",

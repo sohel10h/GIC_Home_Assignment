@@ -11,6 +11,7 @@ public class OrdersController : ControllerBase
 {
     private readonly IOrderService _orderService;
     private readonly ILogger<OrdersController> _logger;
+    private const string OperationIdKey = "OperationId";
 
     public OrdersController(IOrderService orderService, ILogger<OrdersController> logger)
     {
@@ -31,7 +32,7 @@ public class OrdersController : ControllerBase
 
         try
         {
-            var operationId = Guid.NewGuid().ToString();
+            var operationId = HttpContext.Items[OperationIdKey]?.ToString() ?? Guid.NewGuid().ToString();
             var order = await _orderService.CreateOrderAsync(request, operationId);
 
             var response = new OrderResponse
