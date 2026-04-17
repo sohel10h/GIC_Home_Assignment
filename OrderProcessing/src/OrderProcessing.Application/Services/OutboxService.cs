@@ -11,18 +11,23 @@ public class OutboxService : IOutboxService
 {
     private readonly IOutboxRepository _outbox;
     private readonly RetrySettings _retrySettings;
+    private readonly OutboxSettings _outboxSettings;
 
-    public OutboxService(IOutboxRepository outbox, IOptions<RetrySettings> retryOptions)
+    public OutboxService(
+        IOutboxRepository outbox,
+        IOptions<RetrySettings> retryOptions,
+        IOptions<OutboxSettings> outboxOptions)
     {
         _outbox = outbox;
         _retrySettings = retryOptions.Value;
+        _outboxSettings = outboxOptions.Value;
     }
 
     public Task<List<OutboxMessage>> GetPendingByTopicAsync(string topicName)
         => _outbox.GetPendingByTopicAsync(
             topicName,
             _retrySettings.MaxRetryAttempts,
-            _retrySettings.PendingBatchSize);
+            _outboxSettings.PendingBatchSize);
 
     public async Task MarkCompletedAsync(Guid id)
     {

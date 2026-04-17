@@ -28,6 +28,7 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 builder.Services.Configure<RetrySettings>(builder.Configuration.GetSection("RetryPolicy"));
+builder.Services.Configure<OutboxSettings>(builder.Configuration.GetSection("Outbox"));
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseInMemoryDatabase("OrderProcessingDb"));
