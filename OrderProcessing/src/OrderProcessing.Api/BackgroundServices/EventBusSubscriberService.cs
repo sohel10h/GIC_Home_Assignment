@@ -23,6 +23,13 @@ public class EventBusSubscriberService : IHostedService
             await handler.HandleAsync(message, token);
         });
 
+        _eventBus.Subscribe<PaymentSucceededEvent>("payment.succeeded", async (message, token) =>
+        {
+            await using var scope = _scopeFactory.CreateAsyncScope();
+            var handler = scope.ServiceProvider.GetRequiredService<IIntegrationEventHandler<PaymentSucceededEvent>>();
+            await handler.HandleAsync(message, token);
+        });
+
         return Task.CompletedTask;
     }
 

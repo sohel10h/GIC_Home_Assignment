@@ -33,7 +33,10 @@ builder.Services.AddSingleton<IInMemoryEventBus, InMemoryEventBus>();
 
 builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
+
 builder.Services.AddScoped<IIntegrationEventHandler<OrderCreatedEvent>, OrderCreatedEventHandler>();
+builder.Services.AddScoped<IIntegrationEventHandler<PaymentSucceededEvent>, PaymentSucceededEventHandler>();
 
 builder.Services.AddHostedService<EventBusSubscriberService>();
 
